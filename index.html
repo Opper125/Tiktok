@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TikTok Video Downloader - No Watermark</title>
+    <title>Social Media Video Downloader - All Platforms</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         * {
@@ -63,7 +63,6 @@
             100% { transform: translateY(-1500px) rotate(720deg); opacity: 0; }
         }
 
-        /* Top Navigation Bar */
         .top-nav {
             position: fixed;
             top: 0;
@@ -142,7 +141,6 @@
             font-size: 16px;
         }
 
-        /* Donate Modal */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -183,23 +181,6 @@
         @keyframes slideUp {
             from { opacity: 0; transform: translateY(50px); }
             to { opacity: 1; transform: translateY(0); }
-        }
-
-        .modal-close {
-            position: absolute;
-            top: 15px;
-            right: 20px;
-            background: none;
-            border: none;
-            color: rgba(255, 255, 255, 0.6);
-            font-size: 24px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .modal-close:hover {
-            color: white;
-            transform: rotate(90deg);
         }
 
         .modal-icon {
@@ -367,6 +348,31 @@
         .subtitle {
             color: rgba(255, 255, 255, 0.6);
             font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .platform-badges {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        .platform-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: rgba(0, 168, 255, 0.15);
+            border: 1px solid rgba(0, 168, 255, 0.3);
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .platform-badge i {
+            font-size: 14px;
         }
 
         .search-box {
@@ -505,6 +511,11 @@
             display: block;
         }
 
+        .video-preview img {
+            width: 100%;
+            display: block;
+        }
+
         .video-info {
             text-align: center;
             margin-bottom: 20px;
@@ -584,13 +595,9 @@
             box-shadow: 0 6px 20px rgba(0, 210, 106, 0.3);
         }
 
-        .dl-btn.nowm {
+        .dl-btn.sd {
             background: linear-gradient(135deg, var(--bright-blue), var(--light-blue));
             box-shadow: 0 6px 20px rgba(0, 168, 255, 0.3);
-        }
-
-        .dl-btn.wm {
-            background: linear-gradient(135deg, #636e72, #4a5459);
         }
 
         .dl-btn.audio {
@@ -791,6 +798,7 @@
             .download-grid { grid-template-columns: 1fr 1fr; }
             .modal-box { padding: 25px 20px; }
             .phone-number { font-size: 22px; }
+            .platform-badges { gap: 8px; }
         }
     </style>
 </head>
@@ -799,11 +807,10 @@
         <span></span><span></span><span></span><span></span><span></span><span></span>
     </div>
 
-    <!-- Top Navigation -->
     <nav class="top-nav">
         <div class="nav-logo">
-            <i class="fab fa-tiktok"></i>
-            <span>TikSaver</span>
+            <i class="fas fa-download"></i>
+            <span>AllSaver</span>
         </div>
         <div class="nav-buttons">
             <a href="https://tiktok.com/@babysmile7861" target="_blank" class="nav-btn tiktok">
@@ -821,7 +828,6 @@
         </div>
     </nav>
 
-    <!-- Donate Modal -->
     <div class="modal-overlay" id="donateModal" onclick="closeDonateModal(event)">
         <div class="modal-box" onclick="event.stopPropagation()">
             <div class="modal-icon">
@@ -859,7 +865,6 @@
         </div>
     </div>
 
-    <!-- Toast -->
     <div class="toast" id="toast">
         <i class="fas fa-check-circle"></i>
         <span id="toastMsg"></span>
@@ -868,16 +873,22 @@
     <div class="container">
         <header class="header">
             <div class="logo">
-                <div class="logo-icon"><i class="fab fa-tiktok"></i></div>
-                <span class="logo-text">TikTok Saver</span>
+                <div class="logo-icon"><i class="fas fa-cloud-download-alt"></i></div>
+                <span class="logo-text">All Media Saver</span>
             </div>
-            <p class="subtitle">Download Without Watermark - မြန်ဆန်စွာဒေါင်းလုဒ်ဆွဲပါ</p>
+            <p class="subtitle">Download Videos & Images from All Social Media</p>
+            <div class="platform-badges">
+                <span class="platform-badge"><i class="fab fa-tiktok"></i> TikTok</span>
+                <span class="platform-badge"><i class="fab fa-instagram"></i> Instagram</span>
+                <span class="platform-badge"><i class="fab fa-facebook"></i> Facebook</span>
+                <span class="platform-badge"><i class="fab fa-youtube"></i> YouTube</span>
+            </div>
         </header>
 
         <div class="search-box">
             <div class="input-wrapper">
                 <input type="text" class="input-field" id="urlInput" 
-                       placeholder="TikTok Link ထည့်ပါ...">
+                       placeholder="အခု့မှာ Link ထည့်ပါ... (TikTok, Instagram, Facebook, YouTube)">
                 <button class="search-btn" id="searchBtn" onclick="fetchVideo()">
                     <i class="fas fa-spinner spinner"></i>
                     <i class="fas fa-search search-icon"></i>
@@ -891,8 +902,9 @@
         </div>
 
         <div class="video-result" id="videoResult">
-            <div class="video-preview">
-                <video id="videoPlayer" controls playsinline></video>
+            <div class="video-preview" id="mediaPreview">
+                <video id="videoPlayer" controls playsinline style="display:none;"></video>
+                <img id="imagePreview" style="display:none;">
             </div>
             <div class="video-info">
                 <h3 class="video-title" id="vidTitle"></h3>
@@ -943,16 +955,19 @@
         </div>
 
         <footer class="footer">
-            <p>TikTok Video Downloader - No Watermark</p>
+            <p>Social Media Video Downloader - All Platforms Supported</p>
         </footer>
     </div>
 
     <script>
         // ========== CONFIG ==========
+        const RAPIDAPI_KEY = 'e9dca4286emsh4d7cdfebdedad21p12269cjsn0581391f6ed3';
+        const RAPIDAPI_HOST = 'instagram-tiktok-youtube-downloader.p.rapidapi.com';
+        
         const STORAGE = {
-            history: 'tt_history',
-            stats: 'tt_stats',
-            device: 'tt_device'
+            history: 'sm_history',
+            stats: 'sm_stats',
+            device: 'sm_device'
         };
 
         // ========== INIT ==========
@@ -1030,10 +1045,18 @@
         }
 
         function isValidUrl(url) {
-            return url && /tiktok\.com|vm\.tiktok|vt\.tiktok/i.test(url);
+            return url && /tiktok\.com|instagram\.com|facebook\.com|youtube\.com|youtu\.be|fb\.watch|vm\.tiktok|vt\.tiktok/i.test(url);
         }
 
-        // ========== FAST FETCH - TikWM API (Fastest) ==========
+        function detectPlatform(url) {
+            if (/tiktok/i.test(url)) return 'TikTok';
+            if (/instagram/i.test(url)) return 'Instagram';
+            if (/facebook|fb\.watch/i.test(url)) return 'Facebook';
+            if (/youtube|youtu\.be/i.test(url)) return 'YouTube';
+            return 'Unknown';
+        }
+
+        // ========== FETCH VIDEO ==========
         async function fetchVideo() {
             const url = document.getElementById('urlInput').value.trim();
             
@@ -1041,92 +1064,146 @@
             hideStatus();
 
             if (!url) {
-                showStatus('TikTok Link ထည့်ပါ', 'error');
+                showStatus('Link ထည့်ပါ', 'error');
                 return;
             }
 
             if (!isValidUrl(url)) {
-                showStatus('TikTok Link မဟုတ်ပါ', 'error');
+                showStatus('TikTok, Instagram, Facebook သို့မဟုတ် YouTube Link ထည့်ပါ', 'error');
                 return;
             }
 
+            const platform = detectPlatform(url);
             setLoading(true);
-            showStatus('ရှာဖွေနေပါသည်...', 'loading');
+            showStatus(`${platform} ရှာဖွေနေပါသည်...`, 'loading');
 
             try {
-                // Use TikWM API - It's fast and reliable
-                const response = await fetch(`https://www.tikwm.com/api/?url=${encodeURIComponent(url)}&hd=1`);
-                const data = await response.json();
+                const apiUrl = `https://${RAPIDAPI_HOST}/get-info?url=${encodeURIComponent(url)}`;
+                
+                const response = await fetch(apiUrl, {
+                    method: 'GET',
+                    headers: {
+                        'x-rapidapi-key': RAPIDAPI_KEY,
+                        'x-rapidapi-host': RAPIDAPI_HOST
+                    }
+                });
 
-                if (data.code === 0 && data.data) {
-                    displayResult(data.data, url);
+                if (!response.ok) {
+                    throw new Error('API Error: ' + response.status);
+                }
+
+                const data = await response.json();
+                
+                if (data && (data.video_url || data.image_url || data.medias)) {
+                    displayResult(data, url, platform);
                     showStatus('တွေ့ရှိပါပြီ!', 'success');
                     setTimeout(hideStatus, 1500);
                 } else {
-                    showStatus('Video မတွေ့ပါ။ Link ပြန်စစ်ပါ', 'error');
+                    showStatus('Media မတွေ့ပါ။ Link ပြန်စစ်ပါ', 'error');
                 }
             } catch (error) {
-                console.error(error);
-                showStatus('ချိတ်ဆက်မှု မအောင်မြင်ပါ', 'error');
+                console.error('Error:', error);
+                showStatus('ချိတ်ဆက်မှု မအောင်မြင်ပါ။ နောက်မှ ပြန်စမ်းကြည့်ပါ', 'error');
             }
 
             setLoading(false);
         }
 
-        // ========== DISPLAY ==========
-        function displayResult(data, originalUrl) {
-            const player = document.getElementById('videoPlayer');
-            player.src = data.play || data.hdplay || data.wmplay;
-            player.poster = data.cover;
-
-            document.getElementById('vidTitle').textContent = data.title || 'TikTok Video';
-            document.getElementById('vidAuthor').textContent = '@' + (data.author?.unique_id || 'Unknown');
-
-            document.getElementById('vidStats').innerHTML = `
-                <div class="stat-badge"><i class="fas fa-heart"></i> ${formatNum(data.digg_count)}</div>
-                <div class="stat-badge"><i class="fas fa-comment"></i> ${formatNum(data.comment_count)}</div>
-                <div class="stat-badge"><i class="fas fa-share"></i> ${formatNum(data.share_count)}</div>
-                <div class="stat-badge"><i class="fas fa-play"></i> ${formatNum(data.play_count)}</div>
-            `;
-
-            let btns = '';
+        // ========== DISPLAY RESULT ==========
+        function displayResult(data, originalUrl, platform) {
+            const videoPlayer = document.getElementById('videoPlayer');
+            const imagePreview = document.getElementById('imagePreview');
             
-            if (data.hdplay) {
-                btns += `<a href="${data.hdplay}" class="dl-btn hd" target="_blank" download
-                    onclick="onDownload('${esc(data.title)}', '${esc(data.author?.unique_id)}', '${data.cover}', '${originalUrl}', '${data.hdplay}')">
-                    <i class="fas fa-download"></i> HD <span class="badge">1080p</span></a>`;
+            // Reset displays
+            videoPlayer.style.display = 'none';
+            imagePreview.style.display = 'none';
+
+            // Set title and author
+            document.getElementById('vidTitle').textContent = data.title || data.caption || `${platform} Media`;
+            document.getElementById('vidAuthor').textContent = data.author || data.username || 'Unknown';
+
+            // Display stats if available
+            let statsHtml = '';
+            if (data.likes) statsHtml += `<div class="stat-badge"><i class="fas fa-heart"></i> ${formatNum(data.likes)}</div>`;
+            if (data.comments) statsHtml += `<div class="stat-badge"><i class="fas fa-comment"></i> ${formatNum(data.comments)}</div>`;
+            if (data.shares) statsHtml += `<div class="stat-badge"><i class="fas fa-share"></i> ${formatNum(data.shares)}</div>`;
+            if (data.views) statsHtml += `<div class="stat-badge"><i class="fas fa-play"></i> ${formatNum(data.views)}</div>`;
+            document.getElementById('vidStats').innerHTML = statsHtml;
+
+            // Handle different media types
+            let btnsHtml = '';
+            let thumbnailUrl = '';
+
+            // Check for video
+            if (data.video_url || data.video) {
+                const videoUrl = data.video_url || data.video;
+                videoPlayer.src = videoUrl;
+                videoPlayer.poster = data.thumbnail || data.cover || '';
+                videoPlayer.style.display = 'block';
+                thumbnailUrl = data.thumbnail || data.cover || '';
+                
+                btnsHtml += `<a href="${videoUrl}" class="dl-btn hd" target="_blank" download
+                    onclick="onDownload('${esc(data.title || 'Video')}', '${esc(data.author || 'Unknown')}', '${thumbnailUrl}', '${originalUrl}', '${videoUrl}', 'video')">
+                    <i class="fas fa-download"></i> Video HD</a>`;
             }
 
-            if (data.play) {
-                btns += `<a href="${data.play}" class="dl-btn nowm" target="_blank" download
-                    onclick="onDownload('${esc(data.title)}', '${esc(data.author?.unique_id)}', '${data.cover}', '${originalUrl}', '${data.play}')">
-                    <i class="fas fa-download"></i> No WM</a>`;
+            // Check for multiple quality options
+            if (data.medias && Array.isArray(data.medias)) {
+                data.medias.forEach((media, index) => {
+                    if (media.url) {
+                        const quality = media.quality || media.resolution || `Option ${index + 1}`;
+                        const extension = media.extension || 'mp4';
+                        const isVideo = extension === 'mp4' || media.type === 'video';
+                        
+                        if (isVideo && index === 0) {
+                            videoPlayer.src = media.url;
+                            videoPlayer.poster = media.thumbnail || '';
+                            videoPlayer.style.display = 'block';
+                            thumbnailUrl = media.thumbnail || '';
+                        }
+
+                        btnsHtml += `<a href="${media.url}" class="dl-btn ${index === 0 ? 'hd' : 'sd'}" target="_blank" download
+                            onclick="onDownload('${esc(data.title || 'Media')}', '${esc(data.author || 'Unknown')}', '${thumbnailUrl}', '${originalUrl}', '${media.url}', '${isVideo ? 'video' : 'image'}')">
+                            <i class="fas fa-download"></i> ${quality} <span class="badge">${extension}</span></a>`;
+                    }
+                });
             }
 
-            if (data.wmplay) {
-                btns += `<a href="${data.wmplay}" class="dl-btn wm" target="_blank" download>
-                    <i class="fas fa-video"></i> With WM</a>`;
+            // Check for image
+            if (data.image_url || data.image) {
+                const imageUrl = data.image_url || data.image;
+                imagePreview.src = imageUrl;
+                imagePreview.style.display = 'block';
+                thumbnailUrl = imageUrl;
+                
+                btnsHtml += `<a href="${imageUrl}" class="dl-btn hd" target="_blank" download
+                    onclick="onDownload('${esc(data.title || 'Image')}', '${esc(data.author || 'Unknown')}', '${imageUrl}', '${originalUrl}', '${imageUrl}', 'image')">
+                    <i class="fas fa-download"></i> Image <span class="badge">JPG</span></a>`;
             }
 
-            if (data.music) {
-                btns += `<a href="${data.music}" class="dl-btn audio" target="_blank" download>
-                    <i class="fas fa-music"></i> Audio</a>`;
+            // Check for audio
+            if (data.audio_url || data.audio) {
+                const audioUrl = data.audio_url || data.audio;
+                btnsHtml += `<a href="${audioUrl}" class="dl-btn audio" target="_blank" download
+                    onclick="onDownload('${esc(data.title || 'Audio')}', '${esc(data.author || 'Unknown')}', '${thumbnailUrl}', '${originalUrl}', '${audioUrl}', 'audio')">
+                    <i class="fas fa-music"></i> Audio <span class="badge">MP3</span></a>`;
             }
 
-            document.getElementById('downloadBtns').innerHTML = btns;
+            document.getElementById('downloadBtns').innerHTML = btnsHtml;
             document.getElementById('videoResult').classList.add('show');
             document.getElementById('videoResult').scrollIntoView({ behavior: 'smooth' });
         }
 
         // ========== DOWNLOAD ==========
-        function onDownload(title, author, thumb, origUrl, dlUrl) {
+        function onDownload(title, author, thumb, origUrl, dlUrl, type) {
             saveHistory({
                 id: Date.now(),
-                title: title || 'TikTok Video',
+                title: title || 'Media',
                 author: author || 'Unknown',
                 thumb: thumb,
                 origUrl: origUrl,
                 dlUrl: dlUrl,
+                type: type || 'video',
                 date: new Date().toISOString(),
                 device: getDeviceId()
             });
@@ -1224,7 +1301,6 @@
             return str.replace(/['"<>&]/g, c => ({'\'': '&#39;', '"': '&quot;', '<': '&lt;', '>': '&gt;', '&': '&amp;'}[c]));
         }
 
-        // Close modal with Escape key
         document.addEventListener('keydown', e => {
             if (e.key === 'Escape') {
                 document.getElementById('donateModal').classList.remove('show');
