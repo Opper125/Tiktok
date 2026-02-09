@@ -475,21 +475,6 @@
             color: #00d26a;
         }
 
-        .debug-box {
-            margin-top: 15px;
-            padding: 12px 18px;
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            font-size: 11px;
-            font-family: monospace;
-            max-height: 200px;
-            overflow-y: auto;
-            display: none;
-        }
-
-        .debug-box.show { display: block; }
-
         .video-result {
             display: none;
             background: var(--glass);
@@ -914,7 +899,6 @@
                 <i id="statusIcon" class="fas fa-spinner fa-spin"></i>
                 <span id="statusText"></span>
             </div>
-            <div class="debug-box" id="debugBox"></div>
         </div>
 
         <div class="video-result" id="videoResult">
@@ -977,16 +961,14 @@
 
     <script>
         // ========== CONFIG ==========
-        const RAPIDAPI_KEY = 'e9dca4286emsh4d7cdfebdedad21p12269cjsn0581391f6ed3';
-        const RAPIDAPI_HOST = 'instagram-tiktok-youtube-downloader.p.rapidapi.com';
+        const API_TOKEN = '95My62islAShSOX2uwi1PHr0';
+        const API_BASE = 'https://api.social-download.workers.dev';
         
         const STORAGE = {
             history: 'sm_history',
             stats: 'sm_stats',
             device: 'sm_device'
         };
-
-        let DEBUG_MODE = true; // Set to false to hide debug info
 
         // ========== INIT ==========
         document.addEventListener('DOMContentLoaded', () => {
@@ -1007,18 +989,6 @@
 
         function getDeviceId() {
             return localStorage.getItem(STORAGE.device);
-        }
-
-        // ========== DEBUG ==========
-        function showDebug(data) {
-            if (!DEBUG_MODE) return;
-            const debugBox = document.getElementById('debugBox');
-            debugBox.textContent = JSON.stringify(data, null, 2);
-            debugBox.classList.add('show');
-        }
-
-        function hideDebug() {
-            document.getElementById('debugBox').classList.remove('show');
         }
 
         // ========== DONATE MODAL ==========
@@ -1092,7 +1062,6 @@
             
             document.getElementById('videoResult').classList.remove('show');
             hideStatus();
-            hideDebug();
 
             if (!url) {
                 showStatus('Link ထည့်ပါ', 'error');
@@ -1109,15 +1078,14 @@
             showStatus(`${platform} ရှာဖွေနေပါသည်...`, 'loading');
 
             try {
-                const apiUrl = `https://${RAPIDAPI_HOST}/get-info?url=${encodeURIComponent(url)}`;
+                const apiUrl = `${API_BASE}/?url=${encodeURIComponent(url)}&token=${API_TOKEN}`;
                 
                 console.log('Fetching:', apiUrl);
                 
                 const response = await fetch(apiUrl, {
                     method: 'GET',
                     headers: {
-                        'x-rapidapi-key': RAPIDAPI_KEY,
-                        'x-rapidapi-host': RAPIDAPI_HOST
+                        'Accept': 'application/json'
                     }
                 });
 
@@ -1129,31 +1097,25 @@
 
                 const data = await response.json();
                 console.log('Response data:', data);
-                
-                showDebug(data); // Show debug info
 
-                // Check various possible data structures
-                if (data) {
-                    // Check for direct properties
-                    const hasData = data.url || data.video || data.download_url || 
-                                   data.videoUrl || data.medias || data.formats ||
-                                   data.links || data.data;
+                if (data.error) {
+                    showStatus('Error: ' + data.message, 'error');
+                    showToast(data.message, 'error');
+                    setLoading(false);
+                    return;
+                }
 
-                    if (hasData) {
-                        displayResult(data, url, platform);
-                        showStatus('တွေ့ရှိပါပြီ!', 'success');
-                        setTimeout(hideStatus, 1500);
-                    } else {
-                        showStatus('Media မတွေ့ပါ။ Debug info ကို ကြည့်ပါ', 'error');
-                        showToast('API က data ပြန်မပို့ပါ။ Debug box ကိုကြည့်ပါ', 'error');
-                    }
+                if (data && (data.url || data.medias || data.links || data.formats)) {
+                    displayResult(data, url, platform);
+                    showStatus('တွေ့ရှိပါပြီ!', 'success');
+                    setTimeout(hideStatus, 1500);
                 } else {
-                    showStatus('API က response မပြန်ပါ', 'error');
+                    showStatus('Media မတွေ့ပါ။ Link ပြန်စစ်ပါ', 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                showStatus('ချိတ်ဆက်မှု မအောင်မြင်ပါ - ' + error.message, 'error');
-                showToast('API Error: ' + error.message, 'error');
+                showStatus('ချိတ်ဆက်မှု မအောင်မြင်ပါ', 'error');
+                showToast('Error: ' + error.message, 'error');
             }
 
             setLoading(false);
@@ -1167,75 +1129,49 @@
             videoPlayer.style.display = 'none';
             imagePreview.style.display = 'none';
 
-            // Extract data from various possible structures
-            let videoData = data;
-            
-            // If data is nested in 'data' property
-            if (data.data && typeof data.data === 'object') {
-                videoData = data.data;
-            }
-
             // Set title and author
-            const title = videoData.title || videoData.caption || videoData.description || 
-                         videoData.meta?.title || `${platform} Media`;
-            const author = videoData.author || videoData.username || videoData.uploader || 
-                          videoData.owner?.username || videoData.channel || 'Unknown';
+            const title = data.title || data.caption || data.description || `${platform} Media`;
+            const author = data.author || data.username || data.uploader || data.channel || 'Unknown';
 
             document.getElementById('vidTitle').textContent = title;
             document.getElementById('vidAuthor').textContent = '@' + author;
 
             // Display stats
             let statsHtml = '';
-            const stats = videoData.statistics || videoData.stats || videoData;
-            
-            if (stats.likeCount || stats.likes || stats.like_count) {
-                statsHtml += `<div class="stat-badge"><i class="fas fa-heart"></i> ${formatNum(stats.likeCount || stats.likes || stats.like_count)}</div>`;
-            }
-            if (stats.commentCount || stats.comments || stats.comment_count) {
-                statsHtml += `<div class="stat-badge"><i class="fas fa-comment"></i> ${formatNum(stats.commentCount || stats.comments || stats.comment_count)}</div>`;
-            }
-            if (stats.shareCount || stats.shares || stats.share_count) {
-                statsHtml += `<div class="stat-badge"><i class="fas fa-share"></i> ${formatNum(stats.shareCount || stats.shares || stats.share_count)}</div>`;
-            }
-            if (stats.viewCount || stats.views || stats.view_count || stats.playCount) {
-                statsHtml += `<div class="stat-badge"><i class="fas fa-play"></i> ${formatNum(stats.viewCount || stats.views || stats.view_count || stats.playCount)}</div>`;
-            }
-            
+            if (data.likes) statsHtml += `<div class="stat-badge"><i class="fas fa-heart"></i> ${formatNum(data.likes)}</div>`;
+            if (data.comments) statsHtml += `<div class="stat-badge"><i class="fas fa-comment"></i> ${formatNum(data.comments)}</div>`;
+            if (data.shares) statsHtml += `<div class="stat-badge"><i class="fas fa-share"></i> ${formatNum(data.shares)}</div>`;
+            if (data.views) statsHtml += `<div class="stat-badge"><i class="fas fa-play"></i> ${formatNum(data.views)}</div>`;
             document.getElementById('vidStats').innerHTML = statsHtml;
 
             // Get thumbnail
-            let thumbnailUrl = videoData.thumbnail || videoData.cover || videoData.image || 
-                              videoData.thumbnailUrl || videoData.cover_image || '';
+            let thumbnailUrl = data.thumbnail || data.cover || data.image || '';
 
             // Handle download links
             let btnsHtml = '';
             let foundMedia = false;
 
-            // Check for various video URL properties
-            const videoUrl = videoData.url || videoData.video || videoData.download_url || 
-                           videoData.videoUrl || videoData.video_url || videoData.downloadUrl ||
-                           videoData.play || videoData.hdplay;
-
-            if (videoUrl) {
+            // Check for direct video URL
+            if (data.url) {
                 foundMedia = true;
-                videoPlayer.src = videoUrl;
+                videoPlayer.src = data.url;
                 videoPlayer.poster = thumbnailUrl;
                 videoPlayer.style.display = 'block';
                 
-                btnsHtml += `<a href="${videoUrl}" class="dl-btn hd" target="_blank" download
-                    onclick="onDownload('${esc(title)}', '${esc(author)}', '${thumbnailUrl}', '${originalUrl}', '${videoUrl}', 'video')">
+                btnsHtml += `<a href="${data.url}" class="dl-btn hd" target="_blank" download
+                    onclick="onDownload('${esc(title)}', '${esc(author)}', '${thumbnailUrl}', '${originalUrl}', '${data.url}', 'video')">
                     <i class="fas fa-download"></i> Video HD</a>`;
             }
 
-            // Check for medias/links array
-            if (videoData.medias && Array.isArray(videoData.medias)) {
-                videoData.medias.forEach((media, index) => {
+            // Check for medias array
+            if (data.medias && Array.isArray(data.medias)) {
+                data.medias.forEach((media, index) => {
                     if (media.url) {
                         foundMedia = true;
-                        const quality = media.quality || media.resolution || media.label || `Quality ${index + 1}`;
-                        const extension = media.extension || media.ext || 'mp4';
+                        const quality = media.quality || media.resolution || `Quality ${index + 1}`;
+                        const extension = media.extension || 'mp4';
                         
-                        if (index === 0 && !videoUrl) {
+                        if (index === 0 && !data.url) {
                             videoPlayer.src = media.url;
                             videoPlayer.poster = media.thumbnail || thumbnailUrl;
                             videoPlayer.style.display = 'block';
@@ -1248,56 +1184,55 @@
                 });
             }
 
-            // Check for formats (YouTube style)
-            if (videoData.formats && Array.isArray(videoData.formats)) {
-                videoData.formats.slice(0, 5).forEach((format, index) => {
-                    if (format.url) {
+            // Check for links array
+            if (data.links && Array.isArray(data.links)) {
+                data.links.forEach((link, index) => {
+                    if (link.url || link.link) {
                         foundMedia = true;
-                        const quality = format.qualityLabel || format.quality || format.format || `${format.height}p` || `Format ${index + 1}`;
+                        const dlUrl = link.url || link.link;
+                        const quality = link.quality || link.name || `Option ${index + 1}`;
                         
-                        if (index === 0 && !videoUrl) {
-                            videoPlayer.src = format.url;
+                        if (index === 0 && !data.url && !videoPlayer.src) {
+                            videoPlayer.src = dlUrl;
                             videoPlayer.poster = thumbnailUrl;
                             videoPlayer.style.display = 'block';
                         }
 
-                        btnsHtml += `<a href="${format.url}" class="dl-btn ${index === 0 ? 'hd' : 'sd'}" target="_blank" download
+                        btnsHtml += `<a href="${dlUrl}" class="dl-btn ${index === 0 ? 'hd' : 'sd'}" target="_blank" download
+                            onclick="onDownload('${esc(title)}', '${esc(author)}', '${thumbnailUrl}', '${originalUrl}', '${dlUrl}', 'video')">
+                            <i class="fas fa-download"></i> ${quality}</a>`;
+                    }
+                });
+            }
+
+            // Check for formats (YouTube)
+            if (data.formats && Array.isArray(data.formats)) {
+                data.formats.slice(0, 5).forEach((format, index) => {
+                    if (format.url) {
+                        foundMedia = true;
+                        const quality = format.qualityLabel || format.quality || `${format.height}p` || `Format ${index + 1}`;
+                        
+                        btnsHtml += `<a href="${format.url}" class="dl-btn ${index < 2 ? 'hd' : 'sd'}" target="_blank" download
                             onclick="onDownload('${esc(title)}', '${esc(author)}', '${thumbnailUrl}', '${originalUrl}', '${format.url}', 'video')">
                             <i class="fas fa-download"></i> ${quality}</a>`;
                     }
                 });
             }
 
-            // Check for links array
-            if (videoData.links && Array.isArray(videoData.links)) {
-                videoData.links.forEach((link, index) => {
-                    if (link.url || link.link) {
-                        foundMedia = true;
-                        const url = link.url || link.link;
-                        const quality = link.quality || link.name || `Option ${index + 1}`;
-                        
-                        btnsHtml += `<a href="${url}" class="dl-btn ${index === 0 ? 'hd' : 'sd'}" target="_blank" download
-                            onclick="onDownload('${esc(title)}', '${esc(author)}', '${thumbnailUrl}', '${originalUrl}', '${url}', 'video')">
-                            <i class="fas fa-download"></i> ${quality}</a>`;
-                    }
-                });
-            }
-
             // Check for image
-            const imageUrl = videoData.image_url || videoData.image || videoData.picture;
-            if (imageUrl && !foundMedia) {
+            if (data.image_url && !foundMedia) {
                 foundMedia = true;
-                imagePreview.src = imageUrl;
+                imagePreview.src = data.image_url;
                 imagePreview.style.display = 'block';
                 
-                btnsHtml += `<a href="${imageUrl}" class="dl-btn hd" target="_blank" download
-                    onclick="onDownload('${esc(title)}', '${esc(author)}', '${imageUrl}', '${originalUrl}', '${imageUrl}', 'image')">
+                btnsHtml += `<a href="${data.image_url}" class="dl-btn hd" target="_blank" download
+                    onclick="onDownload('${esc(title)}', '${esc(author)}', '${data.image_url}', '${originalUrl}', '${data.image_url}', 'image')">
                     <i class="fas fa-image"></i> Image</a>`;
             }
 
             // Check for audio
-            const audioUrl = videoData.audio_url || videoData.audio || videoData.music || videoData.sound;
-            if (audioUrl) {
+            if (data.audio || data.music) {
+                const audioUrl = data.audio || data.music;
                 foundMedia = true;
                 btnsHtml += `<a href="${audioUrl}" class="dl-btn audio" target="_blank" download
                     onclick="onDownload('${esc(title)}', '${esc(author)}', '${thumbnailUrl}', '${originalUrl}', '${audioUrl}', 'audio')">
@@ -1309,7 +1244,7 @@
                 document.getElementById('videoResult').classList.add('show');
                 document.getElementById('videoResult').scrollIntoView({ behavior: 'smooth' });
             } else {
-                showStatus('Download links မတွေ့ပါ။ Debug info ကို ကြည့်ပါ', 'error');
+                showStatus('Download links မတွေ့ပါ', 'error');
             }
         }
 
