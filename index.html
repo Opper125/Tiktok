@@ -961,8 +961,8 @@
 
     <script>
         // ========== CONFIG ==========
-        const API_TOKEN = '95My62islAShSOX2uwi1PHr0';
-        const API_BASE = 'https://api.social-download.workers.dev';
+        const API_KEY = 'sk_mlf621q2_12e14adcf4ac26d8502441be7d2603d126f140043a33930e78e2b8b66ee6a08c';
+        const API_BASE = 'https://api.novita.ai';
         
         const STORAGE = {
             history: 'sm_history',
@@ -1056,6 +1056,10 @@
             return 'Unknown';
         }
 
+        function isYouTubeUrl(url) {
+            return /youtube\.com|youtu\.be/i.test(url);
+        }
+
         // ========== FETCH VIDEO ==========
         async function fetchVideo() {
             const url = document.getElementById('urlInput').value.trim();
@@ -1074,38 +1078,53 @@
             }
 
             const platform = detectPlatform(url);
+            const isYouTube = isYouTubeUrl(url);
             setLoading(true);
             showStatus(`${platform} ရှာဖွေနေပါသည်...`, 'loading');
 
             try {
-                const apiUrl = `${API_BASE}/?url=${encodeURIComponent(url)}&token=${API_TOKEN}`;
+                // Choose endpoint based on platform
+                const endpoint = isYouTube ? '/api/youtube-info-v2' : '/api/all-in-one-downloader-api';
+                const apiUrl = `${API_BASE}${endpoint}`;
                 
+                const requestBody = {
+                    url: url
+                };
+
                 console.log('Fetching:', apiUrl);
+                console.log('Request body:', requestBody);
                 
                 const response = await fetch(apiUrl, {
-                    method: 'GET',
+                    method: 'POST',
                     headers: {
-                        'Accept': 'application/json'
-                    }
+                        'Content-Type': 'application/json',
+                        'X-API-KEY': API_KEY,
+                        'X_api_d9': API_KEY
+                    },
+                    body: JSON.stringify(requestBody)
                 });
 
                 console.log('Response status:', response.status);
 
                 if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Error response:', errorText);
                     throw new Error('API Error: ' + response.status);
                 }
 
                 const data = await response.json();
                 console.log('Response data:', data);
 
-                if (data.error) {
-                    showStatus('Error: ' + data.message, 'error');
-                    showToast(data.message, 'error');
+                // Check for error in response
+                if (data.error || data.status === 'error') {
+                    showStatus('Error: ' + (data.message || 'Unknown error'), 'error');
+                    showToast(data.message || 'API Error', 'error');
                     setLoading(false);
                     return;
                 }
 
-                if (data && (data.url || data.medias || data.links || data.formats)) {
+                // Check if we have valid data
+                if (data && (data.url || data.download_url || data.medias || data.formats || data.links || data.data)) {
                     displayResult(data, url, platform);
                     showStatus('တွေ့ရှိပါပြီ!', 'success');
                     setTimeout(hideStatus, 1500);
@@ -1114,8 +1133,8 @@
                 }
             } catch (error) {
                 console.error('Error:', error);
-                showStatus('ချိတ်ဆက်မှု မအောင်မြင်ပါ', 'error');
-                showToast('Error: ' + error.message, 'error');
+                showStatus('ချိတ်ဆက်မှု မအောင်မြင်ပါ - ' + error.message, 'error');
+                showToast('API Error: ' + error.message, 'error');
             }
 
             setLoading(false);
@@ -1129,49 +1148,69 @@
             videoPlayer.style.display = 'none';
             imagePreview.style.display = 'none';
 
+            // Extract data (handle nested data structure)
+            let videoData = data.data || data;
+
             // Set title and author
-            const title = data.title || data.caption || data.description || `${platform} Media`;
-            const author = data.author || data.username || data.uploader || data.channel || 'Unknown';
+            const title = videoData.title || videoData.caption || videoData.description || 
+                         videoData.meta?.title || `${platform} Media`;
+            const author = videoData.author || videoData.username || videoData.uploader || 
+                          videoData.channel || videoData.owner?.username || 'Unknown';
 
             document.getElementById('vidTitle').textContent = title;
             document.getElementById('vidAuthor').textContent = '@' + author;
 
             // Display stats
             let statsHtml = '';
-            if (data.likes) statsHtml += `<div class="stat-badge"><i class="fas fa-heart"></i> ${formatNum(data.likes)}</div>`;
-            if (data.comments) statsHtml += `<div class="stat-badge"><i class="fas fa-comment"></i> ${formatNum(data.comments)}</div>`;
-            if (data.shares) statsHtml += `<div class="stat-badge"><i class="fas fa-share"></i> ${formatNum(data.shares)}</div>`;
-            if (data.views) statsHtml += `<div class="stat-badge"><i class="fas fa-play"></i> ${formatNum(data.views)}</div>`;
+            const stats = videoData.statistics || videoData.stats || videoData;
+            
+            if (stats.likes || stats.like_count || stats.likeCount) {
+                statsHtml += `<div class="stat-badge"><i class="fas fa-heart"></i> ${formatNum(stats.likes || stats.like_count || stats.likeCount)}</div>`;
+            }
+            if (stats.comments || stats.comment_count || stats.commentCount) {
+                statsHtml += `<div class="stat-badge"><i class="fas fa-comment"></i> ${formatNum(stats.comments || stats.comment_count || stats.commentCount)}</div>`;
+            }
+            if (stats.shares || stats.share_count || stats.shareCount) {
+                statsHtml += `<div class="stat-badge"><i class="fas fa-share"></i> ${formatNum(stats.shares || stats.share_count || stats.shareCount)}</div>`;
+            }
+            if (stats.views || stats.view_count || stats.viewCount || stats.playCount) {
+                statsHtml += `<div class="stat-badge"><i class="fas fa-play"></i> ${formatNum(stats.views || stats.view_count || stats.viewCount || stats.playCount)}</div>`;
+            }
+            
             document.getElementById('vidStats').innerHTML = statsHtml;
 
             // Get thumbnail
-            let thumbnailUrl = data.thumbnail || data.cover || data.image || '';
+            let thumbnailUrl = videoData.thumbnail || videoData.cover || videoData.image || 
+                              videoData.thumbnailUrl || videoData.cover_image || videoData.picture || '';
 
             // Handle download links
             let btnsHtml = '';
             let foundMedia = false;
 
             // Check for direct video URL
-            if (data.url) {
+            const videoUrl = videoData.url || videoData.download_url || videoData.video || 
+                           videoData.videoUrl || videoData.video_url || videoData.downloadUrl;
+
+            if (videoUrl) {
                 foundMedia = true;
-                videoPlayer.src = data.url;
+                videoPlayer.src = videoUrl;
                 videoPlayer.poster = thumbnailUrl;
                 videoPlayer.style.display = 'block';
                 
-                btnsHtml += `<a href="${data.url}" class="dl-btn hd" target="_blank" download
-                    onclick="onDownload('${esc(title)}', '${esc(author)}', '${thumbnailUrl}', '${originalUrl}', '${data.url}', 'video')">
+                btnsHtml += `<a href="${videoUrl}" class="dl-btn hd" target="_blank" download
+                    onclick="onDownload('${esc(title)}', '${esc(author)}', '${thumbnailUrl}', '${originalUrl}', '${videoUrl}', 'video')">
                     <i class="fas fa-download"></i> Video HD</a>`;
             }
 
             // Check for medias array
-            if (data.medias && Array.isArray(data.medias)) {
-                data.medias.forEach((media, index) => {
+            if (videoData.medias && Array.isArray(videoData.medias)) {
+                videoData.medias.forEach((media, index) => {
                     if (media.url) {
                         foundMedia = true;
-                        const quality = media.quality || media.resolution || `Quality ${index + 1}`;
-                        const extension = media.extension || 'mp4';
+                        const quality = media.quality || media.resolution || media.label || `Quality ${index + 1}`;
+                        const extension = media.extension || media.ext || 'mp4';
                         
-                        if (index === 0 && !data.url) {
+                        if (index === 0 && !videoUrl) {
                             videoPlayer.src = media.url;
                             videoPlayer.poster = media.thumbnail || thumbnailUrl;
                             videoPlayer.style.display = 'block';
@@ -1184,15 +1223,36 @@
                 });
             }
 
+            // Check for formats (YouTube)
+            if (videoData.formats && Array.isArray(videoData.formats)) {
+                videoData.formats.slice(0, 6).forEach((format, index) => {
+                    if (format.url) {
+                        foundMedia = true;
+                        const quality = format.qualityLabel || format.quality || format.label || 
+                                      (format.height ? `${format.height}p` : `Format ${index + 1}`);
+                        
+                        if (index === 0 && !videoUrl) {
+                            videoPlayer.src = format.url;
+                            videoPlayer.poster = thumbnailUrl;
+                            videoPlayer.style.display = 'block';
+                        }
+
+                        btnsHtml += `<a href="${format.url}" class="dl-btn ${index < 2 ? 'hd' : 'sd'}" target="_blank" download
+                            onclick="onDownload('${esc(title)}', '${esc(author)}', '${thumbnailUrl}', '${originalUrl}', '${format.url}', 'video')">
+                            <i class="fas fa-download"></i> ${quality}</a>`;
+                    }
+                });
+            }
+
             // Check for links array
-            if (data.links && Array.isArray(data.links)) {
-                data.links.forEach((link, index) => {
+            if (videoData.links && Array.isArray(videoData.links)) {
+                videoData.links.forEach((link, index) => {
                     if (link.url || link.link) {
                         foundMedia = true;
                         const dlUrl = link.url || link.link;
-                        const quality = link.quality || link.name || `Option ${index + 1}`;
+                        const quality = link.quality || link.name || link.label || `Option ${index + 1}`;
                         
-                        if (index === 0 && !data.url && !videoPlayer.src) {
+                        if (index === 0 && !videoUrl && !videoPlayer.src) {
                             videoPlayer.src = dlUrl;
                             videoPlayer.poster = thumbnailUrl;
                             videoPlayer.style.display = 'block';
@@ -1205,34 +1265,21 @@
                 });
             }
 
-            // Check for formats (YouTube)
-            if (data.formats && Array.isArray(data.formats)) {
-                data.formats.slice(0, 5).forEach((format, index) => {
-                    if (format.url) {
-                        foundMedia = true;
-                        const quality = format.qualityLabel || format.quality || `${format.height}p` || `Format ${index + 1}`;
-                        
-                        btnsHtml += `<a href="${format.url}" class="dl-btn ${index < 2 ? 'hd' : 'sd'}" target="_blank" download
-                            onclick="onDownload('${esc(title)}', '${esc(author)}', '${thumbnailUrl}', '${originalUrl}', '${format.url}', 'video')">
-                            <i class="fas fa-download"></i> ${quality}</a>`;
-                    }
-                });
-            }
-
             // Check for image
-            if (data.image_url && !foundMedia) {
+            const imageUrl = videoData.image_url || videoData.image || videoData.picture;
+            if (imageUrl && !foundMedia) {
                 foundMedia = true;
-                imagePreview.src = data.image_url;
+                imagePreview.src = imageUrl;
                 imagePreview.style.display = 'block';
                 
-                btnsHtml += `<a href="${data.image_url}" class="dl-btn hd" target="_blank" download
-                    onclick="onDownload('${esc(title)}', '${esc(author)}', '${data.image_url}', '${originalUrl}', '${data.image_url}', 'image')">
+                btnsHtml += `<a href="${imageUrl}" class="dl-btn hd" target="_blank" download
+                    onclick="onDownload('${esc(title)}', '${esc(author)}', '${imageUrl}', '${originalUrl}', '${imageUrl}', 'image')">
                     <i class="fas fa-image"></i> Image</a>`;
             }
 
             // Check for audio
-            if (data.audio || data.music) {
-                const audioUrl = data.audio || data.music;
+            const audioUrl = videoData.audio_url || videoData.audio || videoData.music || videoData.sound;
+            if (audioUrl) {
                 foundMedia = true;
                 btnsHtml += `<a href="${audioUrl}" class="dl-btn audio" target="_blank" download
                     onclick="onDownload('${esc(title)}', '${esc(author)}', '${thumbnailUrl}', '${originalUrl}', '${audioUrl}', 'audio')">
